@@ -2,8 +2,11 @@ static char rcsid[] = "$Id$";
 
 /*
 	$Log$
-	Revision 1.1  2004/05/04 19:31:33  in_the_mix
-	Initial revision
+	Revision 1.2  2004/05/05 02:22:31  in_the_mix
+	Made a few changes to fix compilation problems on FreeBSD
+	
+	Revision 1.1.1.1  2004/05/04 19:31:33  in_the_mix
+	Initial import.
 	
 	Revision 1.1.1.1  2004/04/30 22:17:54  brian
 	initial import
@@ -63,6 +66,7 @@ Commercial  usage is  also  possible  with  participation of it's author.
 
 */
 
+#include <pthread.h>
 #include "FtpLibrary.h"
 
 
