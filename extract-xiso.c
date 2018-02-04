@@ -1503,7 +1503,7 @@ left_processed:
 					if ( ! err && dir->start_sector && ( err = chdir( dir->filename ) ) ) chdir_err( dir->filename );
 				} else if ( in_mode == k_upload ) {
 					if ( FtpMkdir( s_ftp, dir->filename ) < 0 ) rmkdir_err( dir->filename );
-					if ( ! err && dir->start_sector && FtpChdir( s_ftp, dir->filename ) < 0 ) rchdir_err( dir->filename );
+					if ( ! err && dir->start_sector && FtpChdir( s_ftp, path ) < 0 ) rchdir_err( dir->filename );
 				}
 				if ( ! err && in_mode != k_list && in_mode != k_generate_avl ) exiso_log( "creating %s (0 bytes) [OK]\n", path );
 			}
@@ -1519,7 +1519,7 @@ left_processed:
 				{
 	
 				if ( ! err && in_mode == k_extract && ( err = chdir( ".." ) ) ) chdir_err( ".." );
-				if ( ! err && in_mode == k_upload && FtpChdir( s_ftp, ".." ) < 0 ) rchdir_err( ".." );
+				if ( ! err && in_mode == k_upload && FtpChdir( s_ftp, in_path ) < 0 ) rchdir_err( ".." );
 			}
 			}
 	
@@ -1898,6 +1898,7 @@ int open_ftp_connection( char *in_host, char *in_user, char *in_password, FTP **
 	exiso_log( "\nlogging in to ftp server %s... ", in_host ); flush();
 
 	if ( FtpLogin( out_ftp, in_host, in_user, in_password, nil ) < 0 ) err = 1;
+
 	if ( ! err && FtpBinary( *out_ftp ) < 0 ) err = 1;
 	
 	exiso_log( "%s\n", err ? "failed!" : "[OK]" );
@@ -1944,7 +1945,7 @@ int write_tree( dir_node_avl *in_avl, write_tree_context *in_context, int in_dep
 					else { if ( chdir( in_avl->filename ) == -1 ) chdir_err( in_avl->filename ); }
 				}
 				if ( ! err && lseek( in_context->xiso, (xoff_t) in_avl->start_sector * XISO_SECTOR_SIZE, SEEK_SET ) == -1 ) seek_err();
-				if ( ! err ) err = avl_traverse_depth_first( in_avl->subdirectory, (traversal_callback) write_directory, (void *) in_context->xiso, k_prefix, 0 );
+				if ( ! err ) err = avl_traverse_depth_first( in_avl->subdirectory, (traversal_callback) write_directory, (void *)(intptr_t) in_context->xiso, k_prefix, 0 );
 				if ( ! err && ( pos = lseek( in_context->xiso, 0, SEEK_CUR ) ) == -1 ) seek_err();
 				if ( ! err && ( pad = (int) (( XISO_SECTOR_SIZE - ( pos % XISO_SECTOR_SIZE ) ) % XISO_SECTOR_SIZE) ) ) {
 					memset( sector, XISO_PAD_BYTE, pad );
@@ -2244,9 +2245,7 @@ int generate_avl_tree_remote( dir_node_avl **out_root, int *io_n ) {
 			if ( ! err ) {
 				if ( p->type == 'd' ) {
 					empty_dir = false;
-	
 					if ( FtpChdir( s_ftp, avl->filename ) < 0 ) rchdir_err( avl->filename );
-	
 					if ( ! err ) err = generate_avl_tree_remote( &avl->subdirectory, io_n );
 					if ( ! err && FtpChdir( s_ftp, ".." ) <= 0 ) rchdir_err( ".." );
 				} else if ( p->type == '-' ) {
