@@ -1,3 +1,17 @@
+This is my modded version of extract-xiso. The original didn't work for me when uploading using FTP.
+There's quite a few things on the backlog, don't know if I ever get to it :).
+If anyone else wants to try, I'd love to hear your feedback.
+
+RELEASE NOTES:
+
+extract-xiso v2.8.0b1 (unreleased, build from master)
+
+- Fix 127.0.0.1 issue when opening FTP data channel socket, now uses the same ipaddress
+of command channel.
+- Use absolute pathname when changing dirs on ftp during upload (not all cases)
+- Small warning fix on 64 bit compile
+- Imported from sourceforge and pushed to github
+
 extract-xiso v2.7.1 
 
 integration of somsky's and Aiyyo's improvements
