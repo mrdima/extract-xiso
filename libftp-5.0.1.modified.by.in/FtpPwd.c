@@ -21,12 +21,12 @@ char * FtpPwd(FTP * con)
   int i;
   
   if ( FtpSendMessage(con,"PWD") == QUIT )
-    return (char *) EXIT(con,QUIT);
+    return (char *)(intptr_t) EXIT(con,QUIT);
   if ( (i=FtpGetMessage(con,tmp)) == QUIT )
-    return (char *) EXIT(con,QUIT);
+    return (char *)(intptr_t) EXIT(con,QUIT);
   
   if ( i != 257 )
-    return (char *) EXIT(con,-i);
+    return (char *)(intptr_t) EXIT(con,-i);
 
   strcpy(tmp1,word(tmp,2));
   if (*tmp1=='"')
