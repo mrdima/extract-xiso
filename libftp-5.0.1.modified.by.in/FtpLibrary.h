@@ -177,7 +177,7 @@ typedef struct/* All structure initialize from edited struct FtpInit */
   struct timeval timeout;
                    /* How long must be waiting next character 
 		      from server */
-  int port;
+  unsigned int port;
   FtpString title;    /* Using for FtpLog, FtpConnect lets hostname */
   unsigned long counter; 
                    /* Using by FtpHash */
@@ -227,11 +227,11 @@ extern FTP FtpInit;
 
 /* Connect & disconnect */ 
 
-STATUS  FtpConnect(FTP **con,char *hostname);
+STATUS  FtpConnect(FTP **con,char *hostname,unsigned int port);
 #define FtpUser(ftp,user)           FtpCommand(ftp,"USER %s",user,230,331,332,EOF)
 #define FtpPassword(ftp,pas)        FtpCommand(ftp,"PASS %s",pas,230,332,EOF)
 #define FtpAccount(ftp,acc)         FtpCommand(ftp,"ACCT %s",acc,230,EOF)
-STATUS  FtpLogin(FTP **con,char *host ,char *user,char *pass,char *acct);
+STATUS  FtpLogin(FTP **con,char *host,unsigned int port,char *user,char *pass,char *acct);
 STATUS  FtpBye (FTP * con);
 STATUS  FtpQuickBye (FTP * con);
 STATUS  FtpAbort(FTP *ftp);

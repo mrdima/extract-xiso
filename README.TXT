@@ -4,6 +4,11 @@ If anyone else wants to try, I'd love to hear your feedback.
 
 RELEASE NOTES:
 
+extract-xiso v2.8.0b2 (unreleased, build from master)
+
+- Added -t option for specifying ftp port
+- Fix segmentation fault when failed to connect to ftp server
+
 extract-xiso v2.8.0b1 (unreleased, build from master)
 
 - Fix 127.0.0.1 issue when opening FTP data channel socket, now uses the same ipaddress
