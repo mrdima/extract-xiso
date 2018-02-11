@@ -78,6 +78,7 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
 			return -i;
 		}
 	}
+
   
 	FtpAssert(con, i=FtpCommand ( con , command , file , 200, 120 , 150 , 125 , 250 , EOF ));
   

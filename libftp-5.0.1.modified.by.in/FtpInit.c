@@ -15,13 +15,13 @@ Commercial  usage is  also  possible  with  participation of it's author.
 #include "FtpLibrary.h"
 
 FTP FtpInit = {
-  NULL,     /*sock*/
+  NULL,  /*sock*/
   NULL,  /*data*/
   'A',   /*mode*/
   0,     /*errno*/
   0,     /*ch*/
   NULL,NULL,NULL, NULL, /*funcs*/
-  0, /*seek*/
+  0,     /*seek*/
   FTP_HANDLERS, /*flags*/
   {kDefaultFTPTimeoutSeconds,0}, /*timeout 2 min*/
   21, /*Port*/

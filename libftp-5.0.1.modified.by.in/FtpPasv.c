@@ -13,6 +13,7 @@ Commercial  usage is  also  possible  with  participation of it's author.
 */
 
 #include "FtpLibrary.h"
+#include <assert.h>
 
 
 char * FtpPasv (FTP *ftp)
@@ -37,6 +38,16 @@ char * FtpPasv (FTP *ftp)
   return PORT;
 }
 
+void FtpPassiveGetAddressAndPort(char *portstrings, char* ipaddress, int *port)
+{
+  int a1, a2, a3, a4, p1, p2, dataPort;
+  assert(ipaddress);
+  assert(port);
+  sscanf(portstrings, "%d,%d,%d,%d,%d,%d", &a1,&a2,&a3,&a4,&p1,&p2);
+  *port = (p1 * 256) + p2;
+  snprintf(ipaddress, 20, "%d.%d.%d.%d", a1, a2, a3, a4);
+  return;
+}
 
 STATUS FtpLink(FTP *ftp1, FTP *ftp2)
 {
@@ -100,7 +111,40 @@ STATUS FtpPassiveTransfer(FTP *ftp1, FTP *ftp2, char *f1, char *f2)
 	return 0;
 }
 
+STATUS FtpPassiveData(FTP * con,int *pascon, char * command , char * file ,char * mode)
+{
+  struct sockaddr_in unit;
+  struct hostent *host;
+  int i,new_socket,port;
+  char* pasvresponse;
+  char *ipaddress = malloc(sizeof(char) * 20);
 
+  pasvresponse = FtpPasv( con);
+  FtpPassiveGetAddressAndPort(pasvresponse, ipaddress, &port);
 
+  memset(&unit, '0', sizeof(unit));
+  unit.sin_family = AF_INET;
+  unit.sin_port = htons(port);
+  if(inet_pton(AF_INET, ipaddress, &unit.sin_addr)<=0)
+    {
+       printf("inet_pton error occured\n");
+       return EXIT(con,QUIT);
+    } 
+  if ( ( new_socket = socket (AF_INET, SOCK_STREAM, 0)) < 0) return EXIT(con,QUIT);
+  if( connect(new_socket, (struct sockaddr *) &unit, sizeof(unit)) < 0)
+    {
+       printf("\n Error : Connect to %s:%i Failed\n",ipaddress,port);
+       return EXIT(con,QUIT);
+    }
+  *pascon = new_socket;
 
+  if ( con -> seek != 0) {
+          if ((i = FtpCommand ( con, "REST %d" , con -> seek , 0, EOF)) != 350 ) {
+                  return -i;
+          }
+  }
 
+  FtpAssert(con, i=FtpCommand ( con , command , file , 200, 120 , 150 , 125 , 250 , EOF ));
+
+  return i;
+}

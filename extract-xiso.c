@@ -710,12 +710,14 @@ static char							   *s_pattern = nil;
 static long							   *s_gs_table = nil;
 static long							   *s_bc_table = nil;
 static xoff_t							s_total_bytes = 0;
+char localIP[16];
 static int								s_total_files = 0;
 static char							   *s_copy_buffer = nil;
 static bool								s_real_quiet = false;
 static bool								s_media_enable = true;
 static xoff_t							s_total_bytes_all_isos = 0;
 static int								s_total_files_all_isos = 0;
+int								pascon = -1;
 static bool								s_warned = 0;
 
 static bool				                s_remove_systemupdate = false; 
@@ -1843,7 +1845,7 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 	if ( in_mode == k_extract ) {
 		if ( ( out = open( in_file->filename, WRITEFLAGS, 0644 ) ) == -1 ) open_err( in_file->filename );
 	} else if ( in_mode == k_upload ) {
-		if ( FtpOpenWrite( s_ftp, in_file->filename ) < 0 ) { ropen_err( in_file->filename ); }
+		if ( FtpOpenPassiveWrite( s_ftp, &pascon, in_file->filename ) < 0 ) { ropen_err( in_file->filename ); }
 		else ftp_open = true;
 	} else err = 1;
 	
@@ -1872,7 +1874,7 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 				  i < in_file->file_size && read( in_xiso, s_copy_buffer, size ) == (int) size;
 				  i += size, size = min( in_file->file_size - i, READWRITE_BUFFER_SIZE ) )
 			{
-				if ( FtpWriteBlock( s_ftp, s_copy_buffer, size ) != (int) size ) {
+				if ( FtpWritePassiveBlock( s_ftp, pascon, s_copy_buffer, size ) != (int) size ) {
 					rwrite_err();
 					break;
 				}
@@ -1883,8 +1885,9 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 		}
 	}
 
-	if ( ftp_open ) FtpClose( s_ftp );
+	if ( ftp_open ) FtpPassiveClose( s_ftp, &pascon );
 	}
+
 
 	if ( ! err ) exiso_log( "\n" );
 

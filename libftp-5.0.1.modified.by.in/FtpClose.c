@@ -24,3 +24,16 @@ STATUS FtpClose(FTP *ftp)
     return EXIT(ftp,-i);
   return EXIT(ftp,i);
 }
+
+STATUS FtpPassiveClose(FTP *ftp, int *pascon)
+{
+  int i;
+  FtpString S1;
+
+  close(*pascon);
+  
+  FtpAssert(ftp,i=FtpGetMessage(ftp,S1));
+  if ( i != 226 )
+    return EXIT(ftp,-i);
+  return EXIT(ftp,i);
+}

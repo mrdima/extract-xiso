@@ -260,6 +260,8 @@ STATUS  FtpData( FTP * con , char * command , char * param , char *mode);
 STATUS  FtpPort ( FTP *con ,int ,int ,int ,int ,int ,int );
 #define FtpOpenRead(ftp,file)       FtpData(ftp,"RETR %s",file,"r")
 #define FtpOpenWrite(ftp,file)      FtpData(ftp,"STOR %s",file,"w")
+#define FtpOpenPassiveRead(ftp,pascon,file)       FtpPassiveData(ftp,pascon,"RETR %s",file,"r")
+#define FtpOpenPassiveWrite(ftp,pascon,file)      FtpPassiveData(ftp,pascon,"STOR %s",file,"w")
 #define FtpOpenAppend(ftp,file)     FtpData(ftp,"APPE %s",file,"r")
 STATUS  FtpOpenDir( FTP * con , char * files );
 STATUS  FtpClose ( FTP *);
