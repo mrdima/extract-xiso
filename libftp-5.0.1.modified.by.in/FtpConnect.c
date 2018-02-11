@@ -14,7 +14,7 @@ Commercial  usage is  also  possible  with  participation of it's author.
 
 #include "FtpLibrary.h"
 
-STATUS FtpConnect(FTP **con,char * hostname)
+STATUS FtpConnect(FTP **con,char * hostname, unsigned int port)
 {
   struct sockaddr_in unit;
   register struct hostent *host;
@@ -23,6 +23,7 @@ STATUS FtpConnect(FTP **con,char * hostname)
   STATUS x;
   
   *con = FtpCreateObject();
+  (*con)->port = port; 
   
   if ((host=FtpGetHost(hostname))==NULL)
     return EXIT((*con),QUIT);

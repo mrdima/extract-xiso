@@ -459,6 +459,7 @@
     -q                  Run quiet (suppress all non-error output).\n\
     -Q                  Run silent (suppress all output).\n\
     -s                  Skip $SystemUpdate folder.\n\
+    -t <ftp_port>       Ftp port to connect to (defaults to 21)\n\
     -u <user name>      Ftp user name (defaults to \"xbox\")\n\
     -v                  Print version information and exit.\n\
 ", banner, argv[ 0 ], argv[ 0 ] );
@@ -585,7 +586,7 @@
 #define DEBUG_DUMP_DIRECTORY			"/Volumes/c/xbox/iso/exiso"
 
 #if ! defined( NO_FTP )
-#define GETOPT_STRING					BURN_OPTION_CHAR "c:d:Df:hlmp:qQrsu:vx"
+#define GETOPT_STRING					BURN_OPTION_CHAR "c:d:Df:t:hlmp:qQrsu:vx"
 #else
 #define GETOPT_STRING					BURN_OPTION_CHAR "c:d:Dhlmp:qQrsvx"
 #endif
@@ -679,7 +680,7 @@ int boyer_moore_init( char *in_pattern, long in_pat_len, long in_alphabet_size )
 
 int free_dir_node_avl( void *in_dir_node_avl, void *, long );
 int extract_file( int in_xiso, dir_node *in_file, modes in_mode, char *path );
-int open_ftp_connection( char *in_host, char *in_user, char *in_password, FTP **out_ftp );
+int open_ftp_connection( char *in_host, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp );
 int decode_xiso( char *in_xiso, char *in_path, modes in_mode, char **out_iso_path, bool in_ll_compat );
 int verify_xiso( int in_xiso, int32_t *out_root_dir_sector, int32_t *out_root_dir_size, char *in_iso_name );
 int traverse_xiso( int in_xiso, dir_node *in_dir_node, xoff_t in_dir_start, char *in_path, modes in_mode, dir_node_avl **in_root, bool in_ll_compat );
@@ -741,6 +742,7 @@ int main( int argc, char **argv ) {
 	struct stat		sb;
 	create_list	   *create = nil, *p, *q, **r;
 	int				i, fd, opt_char, err = 0, isos = 0;
+        unsigned int ftp_port = 21;
 	bool			burn = false, extract = true, rewrite = false, free_user = false, free_pass = false, x_seen = false, delete = false, optimized;
 	char		   *cwd = nil, *server = nil, *pass, *path = nil, *user, *buf = nil, *new_iso_path = nil, tag[ XISO_OPTIMIZED_TAG_LENGTH * sizeof(long) ];
 
@@ -837,6 +839,10 @@ int main( int argc, char **argv ) {
 				s_remove_systemupdate = true;
 			} break;
 
+			case 't': {
+                                ftp_port = (unsigned int) strtoul( optarg, NULL, 10 );
+			} break;
+
 			case 'u': {
 				if ( user && free_user ) free( user );
 				if ( ( user = strdup( optarg ) ) == nil ) mem_err();
@@ -882,7 +888,7 @@ int main( int argc, char **argv ) {
 		if ( ( err = WSAStartup( ws_version_requested, &ws_data ) ) || LOBYTE( ws_data.wVersion ) != 2 || HIBYTE( ws_data.wVersion ) != 0 ) misc_err( "unable to initialize winsock v2 dll, aborting ftp operation\n", 0, 0, 0 );
 	#endif
 
-		if ( ! err ) err = open_ftp_connection( server, user, pass, &s_ftp );
+		if ( ! err ) err = open_ftp_connection( server, ftp_port, user, pass, &s_ftp );
 	}
 
 	if ( ! err && ( create || rewrite ) ) err = boyer_moore_init( XISO_MEDIA_ENABLE, XISO_MEDIA_ENABLE_LENGTH, k_default_alphabet_size );
@@ -1505,7 +1511,7 @@ left_processed:
 					if ( ! err && dir->start_sector && ( err = chdir( dir->filename ) ) ) chdir_err( dir->filename );
 				} else if ( in_mode == k_upload ) {
 					if ( FtpMkdir( s_ftp, dir->filename ) < 0 ) rmkdir_err( dir->filename );
-					if ( ! err && dir->start_sector && FtpChdir( s_ftp, dir->filename ) < 0 ) rchdir_err( dir->filename );
+					if ( ! err && dir->start_sector && FtpChdir( s_ftp, path ) < 0 ) rchdir_err( dir->filename );
 				}
 				if ( ! err && in_mode != k_list && in_mode != k_generate_avl ) exiso_log( "creating %s (0 bytes) [OK]\n", path );
 			}
@@ -1521,7 +1527,7 @@ left_processed:
 				{
 	
 				if ( ! err && in_mode == k_extract && ( err = chdir( ".." ) ) ) chdir_err( ".." );
-				if ( ! err && in_mode == k_upload && FtpChdir( s_ftp, ".." ) < 0 ) rchdir_err( ".." );
+				if ( ! err && in_mode == k_upload && FtpChdir( s_ftp, in_path ) < 0 ) rchdir_err( ".." );
 			}
 			}
 	
@@ -1895,17 +1901,19 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 }
 
 
-int open_ftp_connection( char *in_host, char *in_user, char *in_password, FTP **out_ftp ) {
+int open_ftp_connection( char *in_host, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp ) {
 	STATUS			err = 0;
 	
 	exiso_log( "\nlogging in to ftp server %s... ", in_host ); flush();
 
-	if ( FtpLogin( out_ftp, in_host, in_user, in_password, nil ) < 0 ) err = 1;
+	if ( FtpLogin( out_ftp, in_host, ftp_port, in_user, in_password, nil ) < 0 ) err = 1;
+
 	if ( ! err && FtpBinary( *out_ftp ) < 0 ) err = 1;
 	
 	exiso_log( "%s\n", err ? "failed!" : "[OK]" );
+	if ( err && s_quiet ) misc_err( "unable to log in to ftp server %s\n", in_host, 0, 0 );
 
-	if ( err && s_quiet ) misc_err( "unable to exiso_log in to ftp server %s\n", in_host, 0, 0 );
+        if ( err ) exit(1);
 
 	return err;
 }
@@ -1947,7 +1955,7 @@ int write_tree( dir_node_avl *in_avl, write_tree_context *in_context, int in_dep
 					else { if ( chdir( in_avl->filename ) == -1 ) chdir_err( in_avl->filename ); }
 				}
 				if ( ! err && lseek( in_context->xiso, (xoff_t) in_avl->start_sector * XISO_SECTOR_SIZE, SEEK_SET ) == -1 ) seek_err();
-				if ( ! err ) err = avl_traverse_depth_first( in_avl->subdirectory, (traversal_callback) write_directory, (void *) in_context->xiso, k_prefix, 0 );
+				if ( ! err ) err = avl_traverse_depth_first( in_avl->subdirectory, (traversal_callback) write_directory, (void *)(intptr_t) in_context->xiso, k_prefix, 0 );
 				if ( ! err && ( pos = lseek( in_context->xiso, 0, SEEK_CUR ) ) == -1 ) seek_err();
 				if ( ! err && ( pad = (int) (( XISO_SECTOR_SIZE - ( pos % XISO_SECTOR_SIZE ) ) % XISO_SECTOR_SIZE) ) ) {
 					memset( sector, XISO_PAD_BYTE, pad );
@@ -2247,9 +2255,7 @@ int generate_avl_tree_remote( dir_node_avl **out_root, int *io_n ) {
 			if ( ! err ) {
 				if ( p->type == 'd' ) {
 					empty_dir = false;
-	
 					if ( FtpChdir( s_ftp, avl->filename ) < 0 ) rchdir_err( avl->filename );
-	
 					if ( ! err ) err = generate_avl_tree_remote( &avl->subdirectory, io_n );
 					if ( ! err && FtpChdir( s_ftp, ".." ) <= 0 ) rchdir_err( ".." );
 				} else if ( p->type == '-' ) {

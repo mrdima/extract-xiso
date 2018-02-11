@@ -16,11 +16,21 @@ Commercial  usage is  also  possible  with  participation of it's author.
 
 STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
 {
-  struct sockaddr_in data,from;
+  struct sockaddr_in data,from, my_addr;
   register struct hostent *host;
   FtpString hostname;
   int NewSocket,Accepted_Socket,len=sizeof(data),one=1,fromlen=sizeof(from),i;
   char *a,*b;
+  char local_ip[16];
+  unsigned int local_port;
+  int fd = fileno( FTPCMD( con ) );
+
+// Get my ip address and port for existing cmd channel socket
+  bzero(&my_addr, sizeof(my_addr));
+  int len2 = sizeof(my_addr);
+  getsockname(fd, (struct sockaddr *) &my_addr, &len2);
+  inet_ntop(AF_INET, &my_addr.sin_addr, local_ip, sizeof(local_ip));
+  local_port = ntohs(my_addr.sin_port);
 
   FREE(data);
   FREE(from);
@@ -33,11 +43,14 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
   
   data.sin_family = host -> h_addrtype;
   
-  bcopy(host-> h_addr_list[0],(char *)&data.sin_addr,host->h_length);
+  if(inet_pton(AF_INET, local_ip, &data.sin_addr)<=0)
+  {
+    printf("inet_pton error occured\n");
+    return EXIT(con,QUIT);
+  }
 		
   if ((NewSocket = socket ( AF_INET  , SOCK_STREAM , 0 ))<0) {
 	fprintf( stderr, "socket() failed in FtpData: %s\n", strerror( errno ) );
-
     return EXIT(con,QUIT);
   }
 
@@ -66,6 +79,7 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
 		close(NewSocket);
 		return EXIT(con,QUIT);
 	}
+
 
 	a = ( char * ) & data.sin_addr;
 	b = ( char * ) & data.sin_port;

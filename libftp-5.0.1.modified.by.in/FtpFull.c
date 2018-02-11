@@ -34,7 +34,7 @@ FILE * FtpFullOpen(char * file , char * mode )
       ftp_table[(int)fileno(tmp)] = NULL;
       return tmp;
     }
-  if ( FtpLogin(&ftp,Host,User,Passwd,NULL) < 0 )
+  if ( FtpLogin(&ftp,Host,21,User,Passwd,NULL) < 0 )
     return NULL;
 
   if (mode[1]=='b') FtpBinary(ftp);

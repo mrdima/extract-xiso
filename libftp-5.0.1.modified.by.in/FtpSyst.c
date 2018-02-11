@@ -21,9 +21,9 @@ char * FtpSyst(FTP * con)
   int i;
   
   if ( FtpSendMessage(con,"SYST") == QUIT )
-    return (char *) EXIT(con,QUIT);
+    return (char *)(intptr_t) EXIT(con,QUIT);
   if ( (i=FtpGetMessage(con,tmp)) == QUIT )
-    return (char *) EXIT(con,QUIT);
+    return (char *)(intptr_t) EXIT(con,QUIT);
   
   if ( i != 215 && i != 200 )
     strcpy(tmp1,"UNKNOWN");
