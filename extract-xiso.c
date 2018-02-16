@@ -236,6 +236,9 @@
 
 #if defined( __LINUX__ )
 	#define _LARGEFILE64_SOURCE
+        #ifndef _GNU_SOURCE
+        #define _GNU_SOURCE 1
+        #endif
 #endif
 
 
@@ -1389,7 +1392,10 @@ int decode_xiso( char *in_xiso, char *in_path, modes in_mode, char **out_iso_pat
 		
 	if ( short_name ) free( short_name );
 	if ( cwd ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result" 
 		chdir( cwd );
+#pragma GCC diagnostic pop
 		free( cwd );
 	}
 	
