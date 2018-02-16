@@ -54,6 +54,7 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
     return EXIT(con,QUIT);
   }
 
+
 	if ( setsockopt ( NewSocket , SOL_SOCKET , SO_REUSEADDR , (char *)&one , sizeof(one) ) < 0 ) {
 		fprintf( stderr, "setsockopt() failed in FtpData: %s\n", strerror( errno ) );
 		close(NewSocket);
@@ -62,6 +63,7 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
 
 	data.sin_port = 0 ;
 
+  if (con -> active_ftp) { // Active FTP
 	if ( bind ( NewSocket , (struct sockaddr*) &data , sizeof data ) < 0 ) {
 		fprintf( stderr, "bind() failed in FtpData: %s\n", strerror( errno ) );
 		close(NewSocket);
@@ -103,6 +105,38 @@ STATUS FtpData(FTP * con,char * command , char * file ,char * mode)
 	}
 
 	close(NewSocket);
+  } else { // Passive FTP
+        int port;
+        char* pasvresponse;
+        char *ipaddress = malloc(sizeof(char) * 20);
+
+        pasvresponse = FtpPasv( con);
+        FtpPassiveGetAddressAndPort(pasvresponse, ipaddress, &port);
+
+        memset(&data, '0', sizeof(data));
+        data.sin_family = AF_INET;
+        data.sin_port = htons(port);
+        if(inet_pton(AF_INET, ipaddress, &data.sin_addr)<=0)
+          {
+             printf("inet_pton error occured\n");
+             return EXIT(con,QUIT);
+        }
+        if( connect(NewSocket, (struct sockaddr *) &data, sizeof(data)) < 0)
+          {
+             printf("\n Error : Connect to %s:%i Failed\n",ipaddress,port);
+             close(NewSocket);
+             return EXIT(con,QUIT);
+          }
+        Accepted_Socket = NewSocket;
+
+        if ( con -> seek != 0) {
+                if ((i = FtpCommand ( con, "REST %d" , con -> seek , 0, EOF)) != 350 ) {
+                        return -i;
+                }
+        }
+	FtpAssert(con, i=FtpCommand ( con , command , file , 200, 120 , 150 , 125 , 250 , EOF ));
+
+  }
 
 	FTPDATA(con) = winsock_fdopen(Accepted_Socket, "r+");
 

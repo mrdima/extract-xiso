@@ -141,7 +141,7 @@ STATUS FtpWriteBlock(FTP *ftp, char *buffer, int size) {
   
 	FD_ZERO( &fds );
 	FD_SET( fileno( FTPDATA(ftp) ), &fds );
-  
+
   	ftp->timeout.tv_sec = kDefaultFTPTimeoutSeconds;
   
 	if ( ( err = select( fileno( FTPDATA( ftp ) ) + 1, 0, &fds, 0, &ftp->timeout ) ) == -1 ) {
@@ -163,49 +163,6 @@ STATUS FtpWriteBlock(FTP *ftp, char *buffer, int size) {
 	}
   
 	for ( wsize = 0; ! err && ( wsize += send( fileno( FTPDATA(ftp) ), buffer + wsize, size - wsize, 0 ) ) < size; ) {
-		if ( wsize == -1 ) err = -1;
-	}
-  
-	if ( ! err && ftp->hash && wsize ) (*ftp->hash)( ftp, wsize );
-
-	free( buffer2 );
-
-    return err ? EXIT( ftp, QUIT ) : wsize;
-}
-
-STATUS FtpWritePassiveBlock(FTP *ftp, int pascon, char *buffer, int size) {
-	fd_set					fds;
-	register int			wsize;
-	int						err = 0;
-	char				   *buffer2;
-
-	if ( ( buffer2 = (char *) malloc( size * 2 ) ) == NULL ) return EXIT( ftp, QUIT );
-  
-//	FD_ZERO( &fds );
-//	FD_SET( fileno( FTPDATA(ftp) ), &fds );
-  
-  	ftp->timeout.tv_sec = kDefaultFTPTimeoutSeconds;
-
- /* 
-	if ( ( err = select( fileno( FTPDATA( ftp ) ) + 1, 0, &fds, 0, &ftp->timeout ) ) == -1 ) {
-		fprintf( stderr, "select failed in FtpWriteBlock(): %s\n", strerror( errno ) );
-	} else if ( ! err ) {
-		fprintf( stderr, "select timed out in FtpWriteBlock()\n" );
-		err = 1;
-	} else err = 0;
- */ 
-	if ( ! err && ftp->mode == 'A' ) {
-		register int		i, ii;
-
-      for( i=0, ii = 0; ! err && i < size; ++i, ++ii )
-		if ( buffer[ i ] == '\n' ) buffer2[ ii++ ] = Ctrl( 'M' ), buffer2[ ii ] = Ctrl( 'J' );
-		else buffer2[ ii ] = buffer[ i ];
-
-		buffer = buffer2;
-		size = ii;
-	}
-  
-	for ( wsize = 0; ! err && ( wsize += send(pascon, buffer + wsize, size - wsize, 0 ) ) < size; ) {
 		if ( wsize == -1 ) err = -1;
 	}
   

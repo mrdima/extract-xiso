@@ -15,6 +15,10 @@ Commercial  usage is  also  possible  with  participation of it's author.
 #ifndef __FTPLIBRARY_H
 #define __FTPLIBRARY_H
 
+#if ! defined( __cplusplus ) && ! defined( bool )
+        typedef int bool;
+        enum { false, true };
+#endif
 
 #ifdef __cplusplus
     extern "C" {
@@ -159,6 +163,7 @@ typedef struct/* All structure initialize from edited struct FtpInit */
 
   FILE *data;       /* Data stream to server */
   char mode;        /* Binary, Ascii, ......... */
+  bool active_ftp;  /* true = active, false = passive */ 
   int err_no;        /* Last error code */
   int ch;           /* Help character for ascii streams */
   
@@ -231,7 +236,7 @@ STATUS  FtpConnect(FTP **con,char *hostname,unsigned int port);
 #define FtpUser(ftp,user)           FtpCommand(ftp,"USER %s",user,230,331,332,EOF)
 #define FtpPassword(ftp,pas)        FtpCommand(ftp,"PASS %s",pas,230,332,EOF)
 #define FtpAccount(ftp,acc)         FtpCommand(ftp,"ACCT %s",acc,230,EOF)
-STATUS  FtpLogin(FTP **con,char *host,unsigned int port,char *user,char *pass,char *acct);
+STATUS  FtpLogin(FTP **con,char *host,bool active_ftp, unsigned int port,char *user,char *pass,char *acct);
 STATUS  FtpBye (FTP * con);
 STATUS  FtpQuickBye (FTP * con);
 STATUS  FtpAbort(FTP *ftp);
@@ -246,7 +251,6 @@ STATUS FtpType(FTP *ftp,char type);
 /* Send/Receive and handling Procedure(s) */
 
 STATUS  FtpCopy(FTP *ftp1, FTP *ftp2, char *in, char *out);
-STATUS  FtpPassiveTransfer(FTP *ftp1, FTP *ftp2, char *in, char *out);
 
 STATUS  FtpRetr(FTP *con, char *command,char *inp,char *out);
 #define FtpGet(ftp,in,out)          FtpRetr(ftp,"RETR %s",in,out)
@@ -260,8 +264,6 @@ STATUS  FtpData( FTP * con , char * command , char * param , char *mode);
 STATUS  FtpPort ( FTP *con ,int ,int ,int ,int ,int ,int );
 #define FtpOpenRead(ftp,file)       FtpData(ftp,"RETR %s",file,"r")
 #define FtpOpenWrite(ftp,file)      FtpData(ftp,"STOR %s",file,"w")
-#define FtpOpenPassiveRead(ftp,pascon,file)       FtpPassiveData(ftp,pascon,"RETR %s",file,"r")
-#define FtpOpenPassiveWrite(ftp,pascon,file)      FtpPassiveData(ftp,pascon,"STOR %s",file,"w")
 #define FtpOpenAppend(ftp,file)     FtpData(ftp,"APPE %s",file,"r")
 STATUS  FtpOpenDir( FTP * con , char * files );
 STATUS  FtpClose ( FTP *);

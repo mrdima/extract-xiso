@@ -401,7 +401,7 @@
 #endif
 
 
-#if ! defined( __cplusplus ) && ! defined( bool )
+#if ! defined( __cplusplus ) && ! defined( bool ) && defined (NO_FTP)
 	typedef int bool;
 	enum { false, true };
 #endif
@@ -412,7 +412,7 @@
 #endif
 
 
-#define exiso_version					"2.7.1 (01.11.14)"
+#define exiso_version					"2.8.0 (02.15.18)"
 #define VERSION_LENGTH					16
 
 #define banner							"extract-xiso v" exiso_version " for " exiso_target " - written by in <in@fishtank.com>\n"
@@ -473,6 +473,7 @@
 \n\
   Mutually exclusive modes:\n\
 \n\
+    -a                  Use active FTP instead of passive.\n\
     -c <dir> [name]     Create xiso from file(s) starting in <dir>.  If the\n\
                           [name] parameter is specified, the xiso will be\n\
                           created with the (path and) name given, otherwise\n\
@@ -586,7 +587,7 @@
 #define DEBUG_DUMP_DIRECTORY			"/Volumes/c/xbox/iso/exiso"
 
 #if ! defined( NO_FTP )
-#define GETOPT_STRING					BURN_OPTION_CHAR "c:d:Df:t:hlmp:qQrsu:vx"
+#define GETOPT_STRING					BURN_OPTION_CHAR "ac:d:Df:t:hlmp:qQrsu:vx"
 #else
 #define GETOPT_STRING					BURN_OPTION_CHAR "c:d:Dhlmp:qQrsvx"
 #endif
@@ -680,7 +681,7 @@ int boyer_moore_init( char *in_pattern, long in_pat_len, long in_alphabet_size )
 
 int free_dir_node_avl( void *in_dir_node_avl, void *, long );
 int extract_file( int in_xiso, dir_node *in_file, modes in_mode, char *path );
-int open_ftp_connection( char *in_host, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp );
+int open_ftp_connection( char *in_host, bool active_ftp, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp );
 int decode_xiso( char *in_xiso, char *in_path, modes in_mode, char **out_iso_path, bool in_ll_compat );
 int verify_xiso( int in_xiso, int32_t *out_root_dir_sector, int32_t *out_root_dir_size, char *in_iso_name );
 int traverse_xiso( int in_xiso, dir_node *in_dir_node, xoff_t in_dir_start, char *in_path, modes in_mode, dir_node_avl **in_root, bool in_ll_compat );
@@ -711,14 +712,12 @@ static char							   *s_pattern = nil;
 static long							   *s_gs_table = nil;
 static long							   *s_bc_table = nil;
 static xoff_t							s_total_bytes = 0;
-char localIP[16];
 static int								s_total_files = 0;
 static char							   *s_copy_buffer = nil;
 static bool								s_real_quiet = false;
 static bool								s_media_enable = true;
 static xoff_t							s_total_bytes_all_isos = 0;
 static int								s_total_files_all_isos = 0;
-int								pascon = -1;
 static bool								s_warned = 0;
 
 static bool				                s_remove_systemupdate = false; 
@@ -743,7 +742,7 @@ int main( int argc, char **argv ) {
 	create_list	   *create = nil, *p, *q, **r;
 	int				i, fd, opt_char, err = 0, isos = 0;
         unsigned int ftp_port = 21;
-	bool			burn = false, extract = true, rewrite = false, free_user = false, free_pass = false, x_seen = false, delete = false, optimized;
+	bool			burn = false, extract = true, rewrite = false, free_user = false, free_pass = false, x_seen = false, active_ftp = false, delete = false, optimized;
 	char		   *cwd = nil, *server = nil, *pass, *path = nil, *user, *buf = nil, *new_iso_path = nil, tag[ XISO_OPTIMIZED_TAG_LENGTH * sizeof(long) ];
 
 	if ( argc < 2 ) { usage(); exit( 1 ); }
@@ -752,6 +751,9 @@ int main( int argc, char **argv ) {
 	
 	while ( ! err && ( opt_char = getopt( argc, argv, GETOPT_STRING ) ) != -1 ) {
 		switch ( opt_char ) {
+                        case 'a': {
+				active_ftp = true;
+			} break;
 			case 'b': {
 				if ( x_seen || rewrite || ! extract || create ) {
 					usage();
@@ -888,7 +890,7 @@ int main( int argc, char **argv ) {
 		if ( ( err = WSAStartup( ws_version_requested, &ws_data ) ) || LOBYTE( ws_data.wVersion ) != 2 || HIBYTE( ws_data.wVersion ) != 0 ) misc_err( "unable to initialize winsock v2 dll, aborting ftp operation\n", 0, 0, 0 );
 	#endif
 
-		if ( ! err ) err = open_ftp_connection( server, ftp_port, user, pass, &s_ftp );
+		if ( ! err ) err = open_ftp_connection( server, active_ftp, ftp_port, user, pass, &s_ftp );
 	}
 
 	if ( ! err && ( create || rewrite ) ) err = boyer_moore_init( XISO_MEDIA_ENABLE, XISO_MEDIA_ENABLE_LENGTH, k_default_alphabet_size );
@@ -1851,7 +1853,7 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 	if ( in_mode == k_extract ) {
 		if ( ( out = open( in_file->filename, WRITEFLAGS, 0644 ) ) == -1 ) open_err( in_file->filename );
 	} else if ( in_mode == k_upload ) {
-		if ( FtpOpenPassiveWrite( s_ftp, &pascon, in_file->filename ) < 0 ) { ropen_err( in_file->filename ); }
+		if ( FtpOpenWrite( s_ftp, in_file->filename ) < 0 ) { ropen_err( in_file->filename ); }
 		else ftp_open = true;
 	} else err = 1;
 	
@@ -1880,7 +1882,7 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 				  i < in_file->file_size && read( in_xiso, s_copy_buffer, size ) == (int) size;
 				  i += size, size = min( in_file->file_size - i, READWRITE_BUFFER_SIZE ) )
 			{
-				if ( FtpWritePassiveBlock( s_ftp, pascon, s_copy_buffer, size ) != (int) size ) {
+				if ( FtpWriteBlock( s_ftp, s_copy_buffer, size ) != (int) size ) {
 					rwrite_err();
 					break;
 				}
@@ -1891,7 +1893,7 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 		}
 	}
 
-	if ( ftp_open ) FtpPassiveClose( s_ftp, &pascon );
+	if ( ftp_open ) FtpClose( s_ftp );
 	}
 
 
@@ -1901,12 +1903,12 @@ int extract_file( int in_xiso, dir_node *in_file, modes in_mode , char* path) {
 }
 
 
-int open_ftp_connection( char *in_host, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp ) {
+int open_ftp_connection( char *in_host, bool active_ftp, unsigned int ftp_port, char *in_user, char *in_password, FTP **out_ftp ) {
 	STATUS			err = 0;
 	
 	exiso_log( "\nlogging in to ftp server %s... ", in_host ); flush();
 
-	if ( FtpLogin( out_ftp, in_host, ftp_port, in_user, in_password, nil ) < 0 ) err = 1;
+	if ( FtpLogin( out_ftp, in_host, active_ftp, ftp_port, in_user, in_password, nil ) < 0 ) err = 1;
 
 	if ( ! err && FtpBinary( *out_ftp ) < 0 ) err = 1;
 	

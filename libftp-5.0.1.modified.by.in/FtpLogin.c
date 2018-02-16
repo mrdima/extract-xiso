@@ -14,7 +14,7 @@ Commercial  usage is  also  possible  with  participation of it's author.
 
 #include "FtpLibrary.h"
 
-STATUS FtpLogin ( FTP ** con, char * host , unsigned int port, char * user, char * password, char * account)
+STATUS FtpLogin ( FTP ** con, char * host, bool active_ftp, unsigned int port, char * user, char * password, char * account)
 {
   FtpAssert((*con),FtpConnect(con,host,port));
   FtpAssert((*con),FtpUser((*con),user));
@@ -28,5 +28,6 @@ STATUS FtpLogin ( FTP ** con, char * host , unsigned int port, char * user, char
       if ( ((*con)->err_no)==230 )
 	return (*con)->err_no;
     }
+  (*con)->active_ftp = active_ftp;
   return FtpPassword((*con),password);
 }
